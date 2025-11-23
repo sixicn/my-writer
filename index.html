@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>爱阅写作</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600&display=swap');
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{
+        font-family:'Noto Serif SC',"Microsoft YaHei",serif;
+        height:100vh;overflow:hidden;display:flex;flex-direction:column;padding:0 5%;
+        transition: background .5s ease;
+    }
+    /* 头部样式（包含下拉风格切换） */
+    header{
+        height:60px;
+        display:flex;align-items:center;
+        padding:0 32px;font-size:22px;font-weight:600;letter-spacing:1.2px;
+        box-shadow:0 2px 15px rgba(0,0,0,0.08);
+        border-radius:0 0 12px 12px;
+        margin-bottom:18px;position:relative;z-index:10;
+        transition: all .5s ease;
+    }
+    /* 下拉式风格切换 */
+    .theme-dropdown{
+        position: relative;
+        margin-left: 15px;
+    }
+    .theme-btn{
+        padding: 8px 15px;
+        border-radius: 8px;
+        border: none;
+        background: rgba(255,255,255,0.6);
+        color: inherit;
+        font-family:'Noto Serif SC',"Microsoft YaHei",serif;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all .3s;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .theme-btn:hover{
+        background: rgba(255,255,255,0.8);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    .theme-dropdown-menu{
+        position: absolute;
+        top: 100%;
+        right: 0;
+        margin-top: 8px;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+        padding: 10px 0;
+        width: 180px;
+        display: none;
+        z-index: 999;
+    }
+    /* 修复下拉菜单消失问题：使用更稳定的显示逻辑 */
+    .theme-dropdown.active .theme-dropdown-menu,
+    .theme-dropdown-menu:hover{
+        display: block;
+    }
+    .theme-dropdown-item{
+        padding: 10px 15px;
+        font-size: 13px;
+        cursor: pointer;
+        transition: all .2s;
+        text-align: left;
+    }
+    .theme-dropdown-item:hover{
+        background: rgba(0,0,0,0.03);
+    }
+    .theme-dropdown-item.active{
+        background: rgba(0,0,0,0.05);
+        font-weight: 500;
+    }
+    .container{
+        flex:1;display:flex;gap:18px;overflow:hidden;background:transparent;border-radius:12px;
+        box-shadow:0 8px 30px rgba(0,0,0,.05);
+    }
+    /* 左右侧面板（基础结构） */
+    .left{width:30%;display:flex;flex-direction:column;border-radius:12px 0 0 12px;transition: background .5s ease;}
+    .center{width:50%;display:flex;flex-direction:column;box-shadow:-8px 0 25px rgba(0,0,0,.02);transition: background .5s ease;}
+    .right{width:20%;display:flex;flex-direction:column;border-radius:0 12px 12px 0;transition: background .5s ease;overflow:hidden;}
+    /* 右侧面板容器（关键：限制高度，避免溢出） */
+    .right .panel{
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        overflow: hidden;
+    }
+    /* 面板头部（基础结构） */
+    .panel-header{
+        height:52px;
+        display:flex;align-items:center;
+        justify-content:space-between;padding:0 22px;font-size:16px;font-weight:500;
+        font-family:'Noto Serif SC',"Microsoft YaHei",serif;
+        border-bottom:1px solid rgba(0,0,0,0.05);
+        transition: all .5s ease;
+    }
+    .add-btn{
+        width:40px;height:40px;border-radius:50%;display:flex;align-items:center;
+        justify-content:center;font-size:24px;font-weight:600;cursor:pointer;transition:all .3s;
+    }
+    .add-btn:hover{transform:scale(1.05);}
+    .panel-body{flex:1;overflow-y:auto;padding:16px;}
+    #chapter-list,#character-list{list-style:none;}
+    /* 列表项（基础结构） */
+    #chapter-list li,
+    #character-list li{
+        padding:11px 16px;
+        margin-bottom:5px;
+        background:white;border-radius:10px;
+        box-shadow:0 3px 10px rgba(0,0,0,.04);
+        cursor:pointer;transition:all .25s;user-select:none;
+        font-family:'Noto Serif SC',"Microsoft YaHei",serif;
+        font-size:16px;line-height:1.5;
+        transition: all .5s ease;
+    }
+    #chapter-list li:hover,#character-list li:hover{
+        transform:translateY(-2px);
+        box-shadow:0 6px 15px rgba(0,0,0,0.1);
+    }
+    #chapter-list li.active{
+        border:2px solid transparent;
+        font-weight:600;
+        box-shadow:0 4px 12px rgba(0,0,0,0.08);
+    }
+    /* 工具栏（基础结构） */
+    #toolbar{
+        border-bottom:1px solid rgba(0,0,0,.05);
+        position:relative;z-index:9;
+        transition: all .5s ease;
+    }
+    /* 编辑器（基础结构） */
+    #editor{
+        flex:1;padding:50px 60px!important;
+        font-size:18px!important;
+        line-height:2.0!important;
+        overflow-y:auto;
+        transition: all .5s ease;
+    }
+    /* 字数统计（基础结构） */
+    #word-count{
+        height:42px;
+        padding:0 28px;line-height:42px;
+        border-top:1px solid rgba(0,0,0,.05);
+        display:flex;justify-content:space-between;
+        position:relative;z-index:9;
+        font-size:14px;
+        transition: all .5s ease;
+    }
+    /* 右侧内容容器（彻底修复溢出：多重限制） */
+    #right-content{
+        display:flex;
+        flex-direction:column;
+        height: 100%;
+        padding:15px;
+        gap:10px;
+        overflow: hidden;
+    }
+    .title-bar{
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        flex-shrink: 0; /* 标题栏不收缩 */
+    }
+    #right-content h3{
+        margin:0;font-size:17px;font-weight:500;
+        transition: color .5s ease;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 60%;
+    }
+    /* 右侧文本框（三重防溢出） */
+    #right-content textarea{
+        flex:1;
+        padding:12px;
+        border-radius:8px;
+        font-size:14px;line-height:1.7;
+        resize:none;
+        box-shadow:inset 0 2px 8px rgba(0,0,0,.03);
+        overflow-y:auto;
+        font-family:'Noto Serif SC',"Microsoft YaHei",serif;
+        /* 三重限制：确保不溢出 */
+        max-height: calc(100vh - 280px); /* 基于视口高度 */
+        max-height: calc(100% - 40px); /* 基于父容器高度 */
+        min-height: 100px; /* 最小高度，避免过短 */
+        transition: all .5s ease;
+    }
+    #right-content textarea:focus{
+        outline:none;
+        box-shadow:inset 0 2px 8px rgba(0,0,0,.03), 0 0 0 2px rgba(0,0,0,0.08);
+    }
+    /* 按钮（基础结构） */
+    .btn{
+        border:none;padding:10px 20px;border-radius:8px;
+        cursor:pointer;font-size:14px;font-weight:500;
+        transition:all .3s;
+        box-shadow:0 3px 10px rgba(0,0,0,.08);
+    }
+    .btn:hover{
+        transform:translateY(-1px);
+        box-shadow:0 4px 12px rgba(0,0,0,.1);
+    }
+    .btn-small{
+        padding:6px 12px;font-size:12px;border-radius:6px;
+    }
+    #save-notice{
+        font-size:14px;
+        transition: color .5s ease;
+    }
+    /* 右键菜单（基础结构） */
+    .context-menu{
+        position:absolute;background:white;border-radius:10px;
+        box-shadow:0 8px 25px rgba(0,0,0,.1);
+        padding:8px 0;z-index:10000;min-width:150px;display:none;
+        font-family:'Noto Serif SC',"Microsoft YaHei",serif;
+    }
+    .context-menu div{
+        padding:10px 18px;cursor:pointer;font-size:14px;transition:background .2s;
+        color:#333;
+    }
+    .context-menu div:hover{
+        background:#f5f5f5;
+    }
+    /* 左侧滚动优化 */
+    .left > div {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+    }
+    /* Quill编辑器自定义样式 */
+    .ql-toolbar.ql-snow{
+        border: none !important;
+    }
+    .ql-container.ql-snow{
+        border: none !important;
+    }
+    .ql-editor p{
+        margin-bottom: 1.5em !important;
+    }
+
+    /* ======================================
+       8种预设风格（核心配色方案）
+       ====================================== */
+    /* 1. 莫兰迪优雅（默认） */
+    .theme-morandi body{background:#f8f6f2;}
+    .theme-morandi header{background:#e6ebe0;color:#4a5a44;}
+    .theme-morandi .left,.theme-morandi .right{background:#f0f4f8;}
+    .theme-morandi .center{background:#f8f6f2;}
+    .theme-morandi .panel-header{background:#e1e8f0;color:#384758;}
+    .theme-morandi .add-btn{background:rgba(255,255,255,.6);color:#384758;}
+    .theme-morandi .add-btn:hover{background:white;color:#2d3b4c;}
+    .theme-morandi #chapter-list li,.theme-morandi #character-list li{color:#333;}
+    .theme-morandi #chapter-list li:hover,.theme-morandi #character-list li:hover{background:#fafafa;}
+    .theme-morandi #chapter-list li.active{background:#fdf2f8;color:#745182;}
+    .theme-morandi #toolbar{background:#f2efe9;}
+    .theme-morandi #editor{background:#f8f6f2;color:#2d3b4c;}
+    .theme-morandi #word-count{background:#f2efe9;color:#6b7785;}
+    .theme-morandi #right-content h3{color:#384758;}
+    .theme-morandi #right-content textarea{border:1px solid #e1e8f0;background:white;color:#333;}
+    .theme-morandi #right-content textarea:focus{border-color:#c5d5e5;}
+    .theme-morandi .btn{background:#c5d5e5;color:#2d3b4c;}
+    .theme-morandi .btn:hover{background:#b4c9e0;}
+    .theme-morandi #save-notice{color:#384758;}
+    .theme-morandi .theme-dropdown-item.active{color:#745182;}
+
+    /* 2. 原木书香 */
+    .theme-wood body{background:#faf6ed;}
+    .theme-wood header{background:#f2e9d8;color:#8b5a2b;}
+    .theme-wood .left,.theme-wood .right{background:#f7f1e3;}
+    .theme-wood .center{background:#faf6ed;}
+    .theme-wood .panel-header{background:#ede0c8;color:#7d5a30;}
+    .theme-wood .add-btn{background:rgba(255,255,255,.7);color:#7d5a30;}
+    .theme-wood .add-btn:hover{background:white;color:#6b4a26;}
+    .theme-wood #chapter-list li,.theme-wood #character-list li{color:#5d4037;}
+    .theme-wood #chapter-list li:hover,.theme-wood #character-list li:hover{background:#fdf8f0;}
+    .theme-wood #chapter-list li.active{background:#f9e6c9;color:#8b4513;}
+    .theme-wood #toolbar{background:#ede0c8;}
+    .theme-wood #editor{background:#faf6ed;color:#5d4037;}
+    .theme-wood #word-count{background:#ede0c8;color:#8d6e63;}
+    .theme-wood #right-content h3{color:#7d5a30;}
+    .theme-wood #right-content textarea{border:1px solid #d9c7b8;background:white;color:#5d4037;}
+    .theme-wood #right-content textarea:focus{border-color:#c1a688;}
+    .theme-wood .btn{background:#d9c7b8;color:#7d5a30;}
+    .theme-wood .btn:hover{background:#c1a688;}
+    .theme-wood #save-notice{color:#7d5a30;}
+    .theme-wood .theme-dropdown-item.active{color:#8b4513;}
+
+    /* 3. 清冷竹青 */
+    .theme-bamboo body{background:#f5f9f7;}
+    .theme-bamboo header{background:#e8f4f0;color:#2f6f56;}
+    .theme-bamboo .left,.theme-bamboo .right{background:#eaf6f3;}
+    .theme-bamboo .center{background:#f5f9f7;}
+    .theme-bamboo .panel-header{background:#d4e9e2;color:#285f49;}
+    .theme-bamboo .add-btn{background:rgba(255,255,255,.7);color:#285f49;}
+    .theme-bamboo .add-btn:hover{background:white;color:#1e4a3b;}
+    .theme-bamboo #chapter-list li,.theme-bamboo #character-list li{color:#285f49;}
+    .theme-bamboo #chapter-list li:hover,.theme-bamboo #character-list li:hover{background:#f9fcfb;}
+    .theme-bamboo #chapter-list li.active{background:#d4e9e2;color:#1e4a3b;}
+    .theme-bamboo #toolbar{background:#d4e9e2;}
+    .theme-bamboo #editor{background:#f5f9f7;color:#285f49;}
+    .theme-bamboo #word-count{background:#d4e9e2;color:#4a7d6a;}
+    .theme-bamboo #right-content h3{color:#285f49;}
+    .theme-bamboo #right-content textarea{border:1px solid #b8d6cc;background:white;color:#285f49;}
+    .theme-bamboo #right-content textarea:focus{border-color:#9ac2b6;}
+    .theme-bamboo .btn{background:#b8d6cc;color:#285f49;}
+    .theme-bamboo .btn:hover{background:#9ac2b6;}
+    .theme-bamboo #save-notice{color:#285f49;}
+    .theme-bamboo .theme-dropdown-item.active{color:#1e4a3b;}
+
+    /* 4. 温柔粉雾 */
+    .theme-pink body{background:#fcf4f8;}
+    .theme-pink header{background:#f9e9f2;color:#9d4edd;}
+    .theme-pink .left,.theme-pink .right{background:#fdf0f7;}
+    .theme-pink .center{background:#fcf4f8;}
+    .theme-pink .panel-header{background:#f3d9e8;color:#8b3cc0;}
+    .theme-pink .add-btn{background:rgba(255,255,255,.7);color:#8b3cc0;}
+    .theme-pink .add-btn:hover{background:white;color:#7a32a8;}
+    .theme-pink #chapter-list li,.theme-pink #character-list li{color:#7a32a8;}
+    .theme-pink #chapter-list li:hover,.theme-pink #character-list li:hover{background:#fef7fb;}
+    .theme-pink #chapter-list li.active{background:#f3d9e8;color:#6b2a95;}
+    .theme-pink #toolbar{background:#f3d9e8;}
+    .theme-pink #editor{background:#fcf4f8;color:#6b2a95;}
+    .theme-pink #word-count{background:#f3d9e8;color:#9d4edd;}
+    .theme-pink #right-content h3{color:#8b3cc0;}
+    .theme-pink #right-content textarea{border:1px solid #e8c0d8;background:white;color:#6b2a95;}
+    .theme-pink #right-content textarea:focus{border-color:#d9a5c4;}
+    .theme-pink .btn{background:#e8c0d8;color:#8b3cc0;}
+    .theme-pink .btn:hover{background:#d9a5c4;}
+    .theme-pink #save-notice{color:#8b3cc0;}
+    .theme-pink .theme-dropdown-item.active{color:#6b2a95;}
+
+    /* 5. 深海静谧 */
+    .theme-ocean body{background:#f0f5f9;}
+    .theme-ocean header{background:#e1ebf5;color:#1e40af;}
+    .theme-ocean .left,.theme-ocean .right{background:#e6eff7;}
+    .theme-ocean .center{background:#f0f5f9;}
+    .theme-ocean .panel-header{background:#d1e0f0;color:#1a365d;}
+    .theme-ocean .add-btn{background:rgba(255,255,255,.7);color:#1a365d;}
+    .theme-ocean .add-btn:hover{background:white;color:#152a47;}
+    .theme-ocean #chapter-list li,.theme-ocean #character-list li{color:#1a365d;}
+    .theme-ocean #chapter-list li:hover,.theme-ocean #character-list li:hover{background:#f5f9fc;}
+    .theme-ocean #chapter-list li.active{background:#d1e0f0;color:#152a47;}
+    .theme-ocean #toolbar{background:#d1e0f0;}
+    .theme-ocean #editor{background:#f0f5f9;color:#1a365d;}
+    .theme-ocean #word-count{background:#d1e0f0;color:#2d527c;}
+    .theme-ocean #right-content h3{color:#1a365d;}
+    .theme-ocean #right-content textarea{border:1px solid #b9cfe6;background:white;color:#1a365d;}
+    .theme-ocean #right-content textarea:focus{border-color:#a1bfe0;}
+    .theme-ocean .btn{background:#b9cfe6;color:#1a365d;}
+    .theme-ocean .btn:hover{background:#a1bfe0;}
+    .theme-ocean #save-notice{color:#1a365d;}
+    .theme-ocean .theme-dropdown-item.active{color:#152a47;}
+
+    /* 6. 极简黑白 */
+    .theme-minimal body{background:#ffffff;}
+    .theme-minimal header{background:#f8f8f8;color:#222222;}
+    .theme-minimal .left,.theme-minimal .right{background:#fafafa;}
+    .theme-minimal .center{background:#ffffff;}
+    .theme-minimal .panel-header{background:#f2f2f2;color:#333333;}
+    .theme-minimal .add-btn{background:rgba(0,0,0,.05);color:#333333;}
+    .theme-minimal .add-btn:hover{background:rgba(0,0,0,.1);color:#000000;}
+    .theme-minimal #chapter-list li,.theme-minimal #character-list li{color:#333333;}
+    .theme-minimal #chapter-list li:hover,.theme-minimal #character-list li:hover{background:#f5f5f5;}
+    .theme-minimal #chapter-list li.active{background:#f2f2f2;color:#000000;}
+    .theme-minimal #toolbar{background:#f2f2f2;}
+    .theme-minimal #editor{background:#ffffff;color:#222222;}
+    .theme-minimal #word-count{background:#f2f2f2;color:#666666;}
+    .theme-minimal #right-content h3{color:#333333;}
+    .theme-minimal #right-content textarea{border:1px solid #e0e0e0;background:white;color:#333333;}
+    .theme-minimal #right-content textarea:focus{border-color:#cccccc;}
+    .theme-minimal .btn{background:#f2f2f2;color:#333333;}
+    .theme-minimal .btn:hover{background:#e0e0e0;}
+    .theme-minimal #save-notice{color:#333333;}
+    .theme-minimal .theme-dropdown-item.active{color:#000000;}
+
+    /* 7. 暖光焦糖 */
+    .theme-caramel body{background:#f9f4ed;}
+    .theme-caramel header{background:#f0e6d2;color:#92400e;}
+    .theme-caramel .left,.theme-caramel .right{background:#f5ecd8;}
+    .theme-caramel .center{background:#f9f4ed;}
+    .theme-caramel .panel-header{background:#e6d5b8;color:#7c3aed;}
+    .theme-caramel .add-btn{background:rgba(255,255,255,.7);color:#7c3aed;}
+    .theme-caramel .add-btn:hover{background:white;color:#6b2fd8;}
+    .theme-caramel #chapter-list li,.theme-caramel #character-list li{color:#7c3aed;}
+    .theme-caramel #chapter-list li:hover,.theme-caramel #character-list li:hover{background:#fdf8f0;}
+    .theme-caramel #chapter-list li.active{background:#e6d5b8;color:#6b2fd8;}
+    .theme-caramel #toolbar{background:#e6d5b8;}
+    .theme-caramel #editor{background:#f9f4ed;color:#7c3aed;}
+    .theme-caramel #word-count{background:#e6d5b8;color:#92400e;}
+    .theme-caramel #right-content h3{color:#7c3aed;}
+    .theme-caramel #right-content textarea{border:1px solid #d9c4a8;background:white;color:#7c3aed;}
+    .theme-caramel #right-content textarea:focus{border-color:#c7b088;}
+    .theme-caramel .btn{background:#d9c4a8;color:#7c3aed;}
+    .theme-caramel .btn:hover{background:#c7b088;}
+    .theme-caramel #save-notice{color:#7c3aed;}
+    .theme-caramel .theme-dropdown-item.active{color:#6b2fd8;}
+
+    /* 8. 森系薄荷 */
+    .theme-mint body{background:#f7fbf9;}
+    .theme-mint header{background:#eaf6f3;color:#065f46;}
+    .theme-mint .left,.theme-mint .right{background:#eef7f4;}
+    .theme-mint .center{background:#f7fbf9;}
+    .theme-mint .panel-header{background:#d4ede5;color:#054a3a;}
+    .theme-mint .add-btn{background:rgba(255,255,255,.7);color:#054a3a;}
+    .theme-mint .add-btn:hover{background:white;color:#043a30;}
+    .theme-mint #chapter-list li,.theme-mint #character-list li{color:#054a3a;}
+    .theme-mint #chapter-list li:hover,.theme-mint #character-list li:hover{background:#fafdfb;}
+    .theme-mint #chapter-list li.active{background:#d4ede5;color:#043a30;}
+    .theme-mint #toolbar{background:#d4ede5;}
+    .theme-mint #editor{background:#f7fbf9;color:#054a3a;}
+    .theme-mint #word-count{background:#d4ede5;color:#087f63;}
+    .theme-mint #right-content h3{color:#054a3a;}
+    .theme-mint #right-content textarea{border:1px solid #b8d9ce;background:white;color:#054a3a;}
+    .theme-mint #right-content textarea:focus{border-color:#9ac9be;}
+    .theme-mint .btn{background:#b8d9ce;color:#054a3a;}
+    .theme-mint .btn:hover{background:#9ac9be;}
+    .theme-mint #save-notice{color:#054a3a;}
+    .theme-mint .theme-dropdown-item.active{color:#043a30;}
+
+    /* 响应式适配（小屏幕优化） */
+    @media (max-height: 768px) {
+        #right-content textarea{
+            max-height: calc(100vh - 240px);
+            font-size:13px;
+            padding:10px;
+        }
+        #editor{
+            padding:30px 40px!important;
+            font-size:17px!important;
+            line-height:1.9!important;
+        }
+        header{
+            height:56px;
+            font-size:20px;
+            padding:0 20px;
+        }
+        .panel-header{
+            height:48px;
+            padding:0 18px;
+            font-size:15px;
+        }
+    }
+</style>
+</head>
+<body>
+
+<header>
+    小说写作助手
+    <div style="margin-left:auto;display:flex;gap:15px;align-items:center;">
+        <span id="save-notice">已自动保存</span>
+        <button class="btn" onclick="manualSave()">手动保存</button>
+        <button class="btn" onclick="exportMarkdown()">导出 Markdown</button>
+        <label class="btn" style="cursor:pointer;margin:0;">导入备份
+            <input type="file" id="import-file" accept=".md" style="display:none;" onchange="importMarkdown(event)">
+        </label>
+        <!-- 下拉式风格切换（固定在头部右侧） -->
+        <div class="theme-dropdown">
+            <button class="theme-btn" id="current-theme-btn">
+                <span>当前风格</span>
+                <span>▼</span>
+            </button>
+            <div class="theme-dropdown-menu">
+                <div class="theme-dropdown-item active" data-theme="morandi">莫兰迪优雅</div>
+                <div class="theme-dropdown-item" data-theme="wood">原木书香</div>
+                <div class="theme-dropdown-item" data-theme="bamboo">清冷竹青</div>
+                <div class="theme-dropdown-item" data-theme="pink">温柔粉雾</div>
+                <div class="theme-dropdown-item" data-theme="ocean">深海静谧</div>
+                <div class="theme-dropdown-item" data-theme="minimal">极简黑白</div>
+                <div class="theme-dropdown-item" data-theme="caramel">暖光焦糖</div>
+                <div class="theme-dropdown-item" data-theme="mint">森系薄荷</div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<div class="container">
+    <div class="left">
+        <div class="panel" style="flex:1.8;">
+            <div class="panel-header">章节目录 <div class="add-btn" onclick="addChapter()">+</div></div>
+            <div class="panel-body"><ul id="chapter-list"></ul></div>
+        </div>
+        <div class="panel" style="flex:1;">
+            <div class="panel-header">人物设定 <div class="add-btn" onclick="openNameGenerator()">+</div></div>
+            <div class="panel-body"><ul id="character-list"></ul></div>
+        </div>
+    </div>
+    <div class="center">
+        <div id="toolbar"></div>
+        <div id="editor">点击左侧章节开始创作…</div>
+        <div id="word-count"><span id="word-text">字数：0（汉字） / 0（总字符）</span></div>
+    </div>
+    <div class="right">
+        <div class="panel">
+            <div class="panel-header">笔记 / 详细设定</div>
+            <div id="right-content" class="panel-body">
+                <p style="text-align:center;margin-top:80px;line-height:2.2;" class="notice-text">右键章节/人物 → 修改或删除</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="context-menu" class="context-menu">
+    <div onclick="renameItem()">修改名称</div>
+    <div onclick="deleteItem()" class="delete-btn">删除此项</div>
+</div>
+
+<!-- 新增：人物取名选项面板（默认隐藏） -->
+<div id="name-generator-panel" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.15);width:400px;padding:25px;z-index:1000;display:none;">
+    <h3 style="margin:0 0 20px 0;font-size:18px;text-align:center;">新建人物 - 智能取名</h3>
+    <div style="display:flex;flex-direction:column;gap:15px;">
+        <!-- 性别选择 -->
+        <div>
+            <label style="font-size:14px;margin-right:15px;">性别：</label>
+            <label style="margin-right:15px;"><input type="radio" name="gender" value="male" checked> 男</label>
+            <label style="margin-right:15px;"><input type="radio" name="gender" value="female"> 女</label>
+            <label><input type="radio" name="gender" value="random"> 随机</label>
+        </div>
+        <!-- 姓氏类型 -->
+        <div>
+            <label style="font-size:14px;margin-right:15px;">姓氏：</label>
+            <label style="margin-right:15px;"><input type="radio" name="surname-type" value="single" checked> 单姓</label>
+            <label style="margin-right:15px;"><input type="radio" name="surname-type" value="double"> 复姓</label>
+            <label><input type="radio" name="surname-type" value="random"> 随机</label>
+        </div>
+        <!-- 名字长度 -->
+        <div>
+            <label style="font-size:14px;margin-right:15px;">名字长度：</label>
+            <label style="margin-right:15px;"><input type="radio" name="name-length" value="2" checked> 二字名</label>
+            <label style="margin-right:15px;"><input type="radio" name="name-length" value="3"> 三字名</label>
+            <label><input type="radio" name="name-length" value="random"> 随机</label>
+        </div>
+        <!-- 名字预览 -->
+        <div style="display:flex;align-items:center;gap:10px;">
+            <label style="font-size:14px;">生成结果：</label>
+            <input type="text" id="generated-name" style="flex:1;padding:10px;border:1px solid #e0e0e0;border-radius:8px;font-size:16px;" readonly>
+            <button id="refresh-name" class="btn btn-small" style="padding:8px 15px;">重新随机</button>
+        </div>
+        <!-- 简要介绍 -->
+        <div>
+            <label style="font-size:14px;display:block;margin-bottom:5px;">简要介绍：</label>
+            <input type="text" id="char-brief" style="width:100%;padding:10px;border:1px solid #e0e0e0;border-radius:8px;font-size:14px;" placeholder="例如：江湖侠客、富家千金、神秘谋士...">
+        </div>
+        <!-- 操作按钮 -->
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:10px;">
+            <button id="cancel-name" class="btn btn-small" style="background:#f5f5f5;color:#666;">取消</button>
+            <button id="confirm-name" class="btn btn-small">确认添加</button>
+        </div>
+    </div>
+</div>
+<!-- 新增：面板遮罩层 -->
+<div id="panel-mask" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.3);z-index:999;display:none;"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+<script>
+    const quill = new Quill('#editor', {
+        theme:'snow',
+        modules:{
+            toolbar:[
+                ['bold','italic','underline','strike'],
+                ['blockquote'],
+                [{list:'ordered'},{list:'bullet'}],
+                [{header:1},{header:2}],
+                [{color:[]},{background:[]}],
+                ['clean']
+            ]
+        }
+    });
+    quill.root.style.fontSize='18px';
+    quill.root.style.lineHeight='2.0';
+
+    // ======================================
+    // 全局变量定义（确保所有变量提前声明）
+    // ======================================
+    const html = document.documentElement;
+    const themeItems = document.querySelectorAll('.theme-dropdown-item');
+    const themeBtn = document.getElementById('current-theme-btn');
+    const themeDropdown = document.querySelector('.theme-dropdown');
+    const defaultTheme = 'morandi';
+    const themeNames = {
+        'morandi': '莫兰迪优雅',
+        'wood': '原木书香',
+        'bamboo': '清冷竹青',
+        'pink': '温柔粉雾',
+        'ocean': '深海静谧',
+        'minimal': '极简黑白',
+        'caramel': '暖光焦糖',
+        'mint': '森系薄荷'
+    };
+    const STORAGE_KEY="novel_multi_theme_2025";
+    let novelData={chapters:[],characters:[]};
+    let currentChapterId=null;
+    let contextTarget=null;
+
+    // ======================================
+    // 姓名库定义（提前声明，避免函数调用时未定义）
+    // ======================================
+    // 单姓库
+    const surnamesSingle = [
+        "赵", "钱", "孙", "李", "周", "吴", "郑", "王", "冯", "陈",
+        "褚", "卫", "蒋", "沈", "韩", "杨", "朱", "秦", "尤", "许",
+        "何", "吕", "施", "张", "孔", "曹", "严", "华", "金", "魏",
+        "陶", "姜", "戚", "谢", "邹", "喻", "柏", "水", "窦", "章",
+        "云", "苏", "潘", "葛", "奚", "范", "彭", "郎", "鲁", "韦"
+    ];
+    // 复姓库
+    const surnamesDouble = [
+        "司马", "诸葛", "东方", "皇甫", "上官", "司徒", "欧阳", "夏侯",
+        "公孙", "轩辕", "令狐", "宇文", "尉迟", "拓跋", "淳于", "单于",
+        "太叔", "申屠", "公孙", "仲孙", "轩辕", "令狐", "钟离", "闾丘"
+    ];
+    // 男性名字（二字+三字）
+    const maleNames2 = [
+        "伟", "强", "军", "磊", "鹏", "斌", "峰", "辉", "明", "杰",
+        "涛", "超", "刚", "勇", "毅", "俊", "浩", "晨", "宇", "翔",
+        "博", "哲", "睿", "诚", "谦", "豪", "泽", "轩", "帆", "恒"
+    ];
+    const maleNames3 = [
+        "博文", "浩宇", "俊杰", "子轩", "雨泽", "宇辰", "逸轩", "梓涵",
+        "俊熙", "明轩", "博文", "修远", "思齐", "睿诚", "嘉豪", "泽宇",
+        "浩轩", "宇泽", "子涵", "雨辰", "俊彦", "子墨", "景轩", "宸宇"
+    ];
+    // 女性名字（二字+三字）
+    const femaleNames2 = [
+        "芳", "婷", "静", "敏", "娜", "丽", "娟", "艳", "琳", "玲",
+        "华", "倩", "颖", "晶", "萍", "红", "丹", "梅", "雪", "琪",
+        "雅", "妮", "茜", "菲", "媛", "婷", "萱", "玥", "瑶", "彤"
+    ];
+    const femaleNames3 = [
+        "婉婷", "静怡", "思涵", "雨欣", "语桐", "诗琪", "雅萱", "雨婷",
+        "若曦", "梓涵", "欣怡", "梦琪", "诗涵", "佳怡", "语涵", "子涵",
+        "雨桐", "可欣", "雨菲", "梦瑶", "雅欣", "思琪", "雨萱", "若涵"
+    ];
+    // 章节标题相关
+    const chapterTitleTemplates = [
+        "第{num}章 {scene}",
+        "{scene} 第{num}章",
+        "{scene}"
+    ];
+    const sceneKeywords = [
+        "初遇", "离别", "重逢", "秘密", "危机", "转机", "真相", 
+        "抉择", "启程", "归途", "雨夜", "黎明", "约定", "背叛",
+        "誓言", "回忆", "未来", "谜团", "线索", "对决", "和解"
+    ];
+
+    // ======================================
+    // 页面加载完成后初始化（关键修复：确保DOM加载完成）
+    // ======================================
+    window.addEventListener('DOMContentLoaded', function() {
+        // 初始化主题
+        initTheme();
+        // 加载数据
+        loadAll();
+        // 绑定取名面板事件
+        bindNameGeneratorEvents();
+    });
+
+    // ======================================
+    // 下拉式风格切换核心功能
+    // ======================================
+    // 修复下拉菜单显示问题
+    themeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        themeDropdown.classList.toggle('active');
+    });
+    
+    document.addEventListener('click', () => {
+        themeDropdown.classList.remove('active');
+    });
+
+    // 初始化主题
+    function initTheme() {
+        const savedTheme = localStorage.getItem('novel_theme') || defaultTheme;
+        setTheme(savedTheme);
+        // 更新按钮显示当前主题
+        themeBtn.querySelector('span:first-child').textContent = themeNames[savedTheme];
+        // 高亮当前主题
+        themeItems.forEach(item => {
+            if (item.dataset.theme === savedTheme) {
+                item.classList.add('active');
+            } else {
+                item.classList.remove('active');
+            }
+        });
+    }
+
+    // 设置主题
+    function setTheme(themeName) {
+        // 移除所有主题类
+        html.classList.remove(...Array.from(html.classList).filter(cls => cls.startsWith('theme-')));
+        // 添加当前主题类
+        html.classList.add(`theme-${themeName}`);
+        // 保存主题到本地存储
+        localStorage.setItem('novel_theme', themeName);
+        // 更新Quill编辑器颜色（确保与主题同步）
+        const editorColor = getComputedStyle(document.getElementById('editor')).color;
+        quill.root.style.color = editorColor;
+        // 更新提示文字颜色
+        const noticeText = document.querySelector('.notice-text');
+        if (noticeText) noticeText.style.color = getComputedStyle(document.getElementById('word-count')).color;
+        // 更新删除按钮颜色
+        const deleteBtn = document.querySelector('.delete-btn');
+        if (deleteBtn) deleteBtn.style.color = getComputedStyle(document.querySelector('.btn')).color.replace('rgb', 'rgba').replace(')', ', 0.8)');
+        // 更新下拉按钮样式
+        if (themeBtn) {
+            themeBtn.style.background = getComputedStyle(document.querySelector('.btn')).backgroundColor;
+            themeBtn.style.color = getComputedStyle(document.querySelector('.btn')).color;
+        }
+    }
+
+    // 绑定主题切换事件
+    themeItems.forEach(item => {
+        item.addEventListener('click', () => {
+            const themeName = item.dataset.theme;
+            setTheme(themeName);
+            // 更新按钮显示
+            themeBtn.querySelector('span:first-child').textContent = themeNames[themeName];
+            // 更新高亮状态
+            themeItems.forEach(i => i.classList.remove('active'));
+            item.classList.add('active');
+            // 关闭下拉菜单
+            themeDropdown.classList.remove('active');
+        });
+    });
+
+    // ======================================
+    // 增强版自动取名功能
+    // ======================================
+    // 增强版名字生成函数（支持定制参数）
+    function generateCharacterName(customOptions = {}) {
+        // 默认参数
+        const options = {
+            gender: customOptions.gender || 'random', // male/female/random
+            surnameType: customOptions.surnameType || 'random', // single/double/random
+            nameLength: customOptions.nameLength || 'random' // 2/3/random
+        };
+
+        // 随机性别
+        const finalGender = options.gender === 'random' 
+            ? Math.random() > 0.5 ? 'male' : 'female'
+            : options.gender;
+
+        // 随机姓氏类型
+        const finalSurnameType = options.surnameType === 'random'
+            ? Math.random() > 0.7 ? 'double' : 'single' // 单姓概率更高（70%）
+            : options.surnameType;
+
+        // 随机名字长度
+        const finalNameLength = options.nameLength === 'random'
+            ? Math.random() > 0.5 ? '2' : '3'
+            : options.nameLength;
+
+        // 选择姓氏
+        let surname = '';
+        if (finalSurnameType === 'single') {
+            surname = surnamesSingle[Math.floor(Math.random() * surnamesSingle.length)];
+        } else {
+            surname = surnamesDouble[Math.floor(Math.random() * surnamesDouble.length)];
+        }
+
+        // 选择名字
+        let givenName = '';
+        if (finalGender === 'male') {
+            givenName = finalNameLength === '2'
+                ? maleNames2[Math.floor(Math.random() * maleNames2.length)]
+                : maleNames3[Math.floor(Math.random() * maleNames3.length)];
+        } else {
+            givenName = finalNameLength === '2'
+                ? femaleNames2[Math.floor(Math.random() * femaleNames2.length)]
+                : femaleNames3[Math.floor(Math.random() * femaleNames3.length)];
+        }
+
+        // 组合姓名（复姓+三字名时自动调整为"复姓+三字名"，避免过长）
+        if (finalSurnameType === 'double' && finalNameLength === '3') {
+            return surname + givenName;
+        }
+        return surname + givenName;
+    }
+
+    // 生成章节标题函数
+    function generateChapterTitle() {
+        const chapterNum = novelData.chapters.length + 1;
+        const template = chapterTitleTemplates[Math.floor(Math.random() * chapterTitleTemplates.length)];
+        const keyword = sceneKeywords[Math.floor(Math.random() * sceneKeywords.length)];
+        return template.replace("{num}", chapterNum).replace("{scene}", keyword);
+    }
+
+    // 打开取名面板
+    function openNameGenerator() {
+        const panel = document.getElementById('name-generator-panel');
+        const mask = document.getElementById('panel-mask');
+        if (panel && mask) {
+            // 显示面板和遮罩
+            panel.style.display = 'block';
+            mask.style.display = 'block';
+            // 生成第一个随机名字
+            refreshGeneratedName();
+            // 同步主题样式
+            initNamePanelStyle();
+        }
+    }
+
+    // 刷新随机名字
+    function refreshGeneratedName() {
+        // 获取用户选择的选项
+        const genderEl = document.querySelector('input[name="gender"]:checked');
+        const surnameTypeEl = document.querySelector('input[name="surname-type"]:checked');
+        const nameLengthEl = document.querySelector('input[name="name-length"]:checked');
+        const nameInput = document.getElementById('generated-name');
+        
+        if (genderEl && surnameTypeEl && nameLengthEl && nameInput) {
+            const gender = genderEl.value;
+            const surnameType = surnameTypeEl.value;
+            const nameLength = nameLengthEl.value;
+            // 生成并显示名字
+            const newName = generateCharacterName({ gender, surnameType, nameLength });
+            nameInput.value = newName;
+        }
+    }
+
+    // 初始化取名面板样式（同步当前主题）
+    function initNamePanelStyle() {
+        const panel = document.getElementById('name-generator-panel');
+        if (!panel) return;
+        
+        const btn = document.querySelector('.btn');
+        if (!btn) return;
+        
+        const btnStyle = getComputedStyle(btn);
+        const wordCount = document.getElementById('word-count');
+        const textColor = wordCount ? getComputedStyle(wordCount).color : '#333';
+        
+        // 面板标题颜色
+        const panelTitle = panel.querySelector('h3');
+        if (panelTitle) panelTitle.style.color = textColor;
+        // 标签颜色
+        panel.querySelectorAll('label').forEach(label => {
+            label.style.color = textColor;
+        });
+        // 按钮样式
+        panel.querySelectorAll('.btn').forEach(btnEl => {
+            btnEl.style.backgroundColor = btnStyle.backgroundColor;
+            btnEl.style.color = btnStyle.color;
+            btnEl.style.border = 'none';
+        });
+        // 输入框样式
+        const textarea = document.querySelector('#right-content textarea');
+        const borderColor = textarea ? getComputedStyle(textarea).borderColor : '#e0e0e0';
+        panel.querySelectorAll('input[type="text"]').forEach(input => {
+            input.style.borderColor = borderColor;
+            input.style.color = textColor;
+        });
+    }
+
+    // 关闭取名面板
+    function closeNamePanel() {
+        const panel = document.getElementById('name-generator-panel');
+        const mask = document.getElementById('panel-mask');
+        const briefInput = document.getElementById('char-brief');
+        
+        if (panel) panel.style.display = 'none';
+        if (mask) mask.style.display = 'none';
+        if (briefInput) briefInput.value = '';
+    }
+
+    // 确认添加人物
+    function confirmAddCharacter() {
+        const nameInput = document.getElementById('generated-name');
+        const briefInput = document.getElementById('char-brief');
+        
+        if (!nameInput || !briefInput) return;
+        
+        const name = nameInput.value.trim();
+        const brief = briefInput.value.trim() || '';
+        
+        if (!name) {
+            alert('请生成一个有效的名字！');
+            return;
+        }
+        
+        // 添加到人物列表
+        const id = Date.now();
+        novelData.characters.push({ id, name, brief, detail: "" });
+        // 刷新界面并保存
+        renderCharacters();
+        saveAll();
+        // 关闭面板
+        closeNamePanel();
+    }
+
+    // 绑定取名面板事件
+    function bindNameGeneratorEvents() {
+        const refreshBtn = document.getElementById('refresh-name');
+        const confirmBtn = document.getElementById('confirm-name');
+        const cancelBtn = document.getElementById('cancel-name');
+        const mask = document.getElementById('panel-mask');
+        
+        // 重新随机按钮
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', refreshGeneratedName);
+        }
+        
+        // 确认添加按钮
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', confirmAddCharacter);
+        }
+        
+        // 取消按钮
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', closeNamePanel);
+        }
+        
+        // 点击遮罩关闭
+        if (mask) {
+            mask.addEventListener('click', closeNamePanel);
+        }
+    }
+
+    // ======================================
+    // 原有核心功能
+    // ======================================
+    function updateWordCount(){
+        const t=quill.getText();
+        const c=(t.match(/[\u4e00-\u9fa5]/g)||[]).length;
+        const a=t.trim().length;
+        const wordText = document.getElementById('word-text');
+        if (wordText) wordText.textContent=`字数：${c}（汉字） / ${a}（总字符）`;
+    }
+    quill.on('text-change',updateWordCount);
+
+    quill.on('editor-change', () => {
+        const toolbar = document.querySelector('#toolbar');
+        const wordCount = document.querySelector('#word-count');
+        if (toolbar) toolbar.style.display = 'block';
+        if (wordCount) wordCount.style.display = 'flex';
+    });
+
+    document.addEventListener('contextmenu',e=>{
+        const cl=e.target.closest('#chapter-list li');
+        const chl=e.target.closest('#character-list li');
+        if(cl||chl){
+            e.preventDefault();
+            contextTarget=cl?{type:'chapter',id:cl.dataset.id}:{type:'character',id:chl.dataset.id};
+            const m=document.getElementById('context-menu');
+            if(m){
+                m.style.display='block';
+                m.style.left=e.pageX+'px';
+                m.style.top=e.pageY+'px';
+            }
+        }
+    });
+    document.addEventListener('click',()=>{
+        const contextMenu = document.getElementById('context-menu');
+        if (contextMenu) contextMenu.style.display='none';
+    });
+
+    function renameItem(){
+        if(!contextTarget) return;
+        if(contextTarget.type==='chapter'){
+            const ch=novelData.chapters.find(c=>c.id==contextTarget.id);
+            if(ch){
+                const nt=prompt("修改章节标题：",ch.title);
+                if(nt&&nt!==ch.title){ch.title=nt;renderChapters();saveAll();}
+            }
+        }else{
+            const char=novelData.characters.find(c=>c.id==contextTarget.id);
+            if(char){
+                const nn=prompt("修改人物姓名：",char.name);
+                if(nn&&nn!==char.name){
+                    char.name=nn;
+                    const nb=prompt("修改简要介绍：",char.brief);
+                    if(nb!==null) char.brief=nb;
+                    renderCharacters();saveAll();
+                }
+            }
+        }
+    }
+    function deleteItem(){
+        if(!contextTarget||!confirm("确定永久删除此项吗？")) return;
+        if(contextTarget.type==='chapter'){
+            novelData.chapters=novelData.chapters.filter(c=>c.id!=contextTarget.id);
+            if(currentChapterId==contextTarget.id){quill.setText('');currentChapterId=null;}
+            renderChapters();
+            if(novelData.chapters.length>0) switchChapter(novelData.chapters[0].id);
+        }else{
+            novelData.characters=novelData.characters.filter(c=>c.id!=contextTarget.id);
+            renderCharacters();
+        }
+        saveAll();
+    }
+
+    function saveAll(){
+        if(currentChapterId!==null){
+            const ch=novelData.chapters.find(c=>c.id===currentChapterId);
+            if(ch) ch.content=JSON.stringify(quill.getContents());
+        }
+        localStorage.setItem(STORAGE_KEY,JSON.stringify(novelData));
+    }
+    function manualSave(){
+        saveAll();
+        const n=document.getElementById('save-notice');
+        if(n){
+            n.textContent="✅ 已手动保存";
+            setTimeout(()=>n.textContent="已自动保存",3000);
+        }
+    }
+
+    function loadAll(){
+        const d=localStorage.getItem(STORAGE_KEY);
+        if(d) novelData=JSON.parse(d);
+        else{
+            novelData.chapters.push({id:Date.now(),title:"第一章 故事从这里开始",content:"",note:"欢迎使用多风格优化版写作助手！"});
+            novelData.characters.push({id:Date.now()+1,name:"主角",brief:"点击右键修改",detail:""});
+        }
+        renderChapters();renderCharacters();
+        if(novelData.chapters.length>0) switchChapter(novelData.chapters[0].id);
+        updateWordCount();
+    }
+
+    function renderChapters(){
+        const list=document.getElementById('chapter-list');
+        if(!list) return;
+        list.innerHTML='';
+        novelData.chapters.forEach(ch=>{
+            const li=document.createElement('li');
+            li.textContent=ch.title;li.dataset.id=ch.id;
+            li.onclick=e=>{if(e.button===0) switchChapter(ch.id);};
+            list.appendChild(li);
+        });
+        // 保持当前章节激活状态
+        if(currentChapterId){
+            document.querySelectorAll('#chapter-list li').forEach(li=>{
+                if(li.dataset.id===currentChapterId.toString()){
+                    li.classList.add('active');
+                }
+            });
+        }
+    }
+    function addChapter(){
+        const defaultTitle = generateChapterTitle();
+        const t=prompt("新章节标题：", defaultTitle)||defaultTitle;
+        const id=Date.now();
+        novelData.chapters.push({id,title:t,content:"",note:""});
+        renderChapters();switchChapter(id);saveAll();
+    }
+    function switchChapter(id){
+        if(currentChapterId!==null){
+            const prev=novelData.chapters.find(c=>c.id===currentChapterId);
+            if(prev) prev.content=JSON.stringify(quill.getContents());
+        }
+        currentChapterId=id;
+        const chapter=novelData.chapters.find(c=>c.id===id);
+        if(chapter){
+            document.querySelectorAll('#chapter-list li').forEach(li=>li.classList.remove('active'));
+            const activeLi = document.querySelector(`#chapter-list li[data-id="${id}"]`);
+            if(activeLi) activeLi.classList.add('active');
+            chapter.content?quill.setContents(JSON.parse(chapter.content)):quill.setText('');
+            updateWordCount();showChapterNote(chapter);
+        }
+    }
+    function showChapterNote(chapter){
+        const rightContent = document.getElementById('right-content');
+        if(!rightContent) return;
+        rightContent.innerHTML=`
+            <div class="title-bar">
+                <h3>${chapter.title}</h3>
+                <button class="btn btn-small" onclick="saveNote()">保存笔记</button>
+            </div>
+            <textarea id="note-text" placeholder="章节大纲、伏笔、时间线、灵感备忘…">${chapter.note||''}</textarea>`;
+        // 同步文本框样式到当前主题
+        const textarea = document.getElementById('note-text');
+        if(textarea){
+            textarea.style.borderColor = getComputedStyle(textarea).borderColor;
+            textarea.style.backgroundColor = getComputedStyle(textarea).backgroundColor;
+        }
+    }
+    function saveNote(){
+        const chapter=novelData.chapters.find(c=>c.id===currentChapterId);
+        const noteText = document.getElementById('note-text');
+        if(chapter && noteText){
+            chapter.note=noteText.value;saveAll();
+            const btn = document.querySelector('.title-bar .btn-small');
+            if(btn){
+                const originalText = btn.textContent;
+                btn.textContent = '✅ 已保存';
+                setTimeout(() => btn.textContent = originalText, 2000);
+            }
+        }
+    }
+
+    function renderCharacters(){
+        const list=document.getElementById('character-list');
+        if(!list) return;
+        list.innerHTML='';
+        novelData.characters.forEach(char=>{
+            const li=document.createElement('li');
+            li.innerHTML=`<strong>${char.name}</strong><br><small class="char-brief">${char.brief||'暂无简介'}</small>`;
+            li.dataset.id=char.id;
+            li.onclick=e=>{if(e.button===0) showCharacterDetail(char);};
+            list.appendChild(li);
+        });
+        // 同步人物简介文字颜色
+        document.querySelectorAll('.char-brief').forEach(el => {
+            const wordCount = document.getElementById('word-count');
+            if(el && wordCount) el.style.color = getComputedStyle(wordCount).color;
+        });
+    }
+
+    function showCharacterDetail(char){
+        const rightContent = document.getElementById('right-content');
+        if(!rightContent) return;
+        rightContent.innerHTML=`
+            <div class="title-bar">
+                <h3>${char.name}</h3>
+                <button class="btn btn-small" onclick="saveCharacter(${char.id})">保存设定</button>
+            </div>
+            <p><strong>简述：</strong><span class="char-brief">${char.brief||'暂无'}</span></p>
+            <h4 style="margin:8px 0;font-size:15px;" class="detail-title">详细设定</h4>
+            <textarea id="detail-text">${char.detail||''}</textarea>`;
+        // 同步样式到当前主题
+        const textarea = document.getElementById('detail-text');
+        const charBrief = document.querySelector('.char-brief');
+        const detailTitle = document.querySelector('.detail-title');
+        const rightContentH3 = document.querySelector('#right-content h3');
+        const wordCount = document.getElementById('word-count');
+        
+        if(textarea){
+            textarea.style.borderColor = getComputedStyle(textarea).borderColor;
+            textarea.style.backgroundColor = getComputedStyle(textarea).backgroundColor;
+        }
+        if(charBrief && wordCount) charBrief.style.color = getComputedStyle(wordCount).color;
+        if(detailTitle && rightContentH3) detailTitle.style.color = getComputedStyle(rightContentH3).color;
+    }
+    function saveCharacter(id){
+        const char=novelData.characters.find(c=>c.id===id);
+        const detailText = document.getElementById('detail-text');
+        if(char && detailText){
+            char.detail=detailText.value;saveAll();
+            const btn = document.querySelector('.title-bar .btn-small');
+            if(btn){
+                const originalText = btn.textContent;
+                btn.textContent = '✅ 已保存';
+                setTimeout(() => btn.textContent = originalText, 2000);
+            }
+        }
+    }
+
+    function exportMarkdown(){
+        let md="# 我的长篇小说\n\n";
+        novelData.chapters.forEach(ch=>{
+            md+=`## ${ch.title}\n\n`;
+            if(ch.content){
+                const delta=JSON.parse(ch.content);
+                delta.ops.forEach(op=>{if(typeof op.insert==='string') md+=op.insert;});
+            }
+            md+="\n\n---\n\n";
+        });
+        const blob=new Blob([md],{type:'text/markdown;charset=utf-8'});
+        const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='我的小说.md';a.click();
+    }
+
+    function importMarkdown(event){
+        const file=event.target.files[0];
+        if(!file) return;
+        const reader=new FileReader();
+        reader.onload=e=>{
+            if(!confirm(`即将导入《${file.name}》，会覆盖当前小说，确定吗？`)) return;
+            const content=e.target.result;
+            novelData.chapters=[];currentChapterId=null;quill.setText('');
+            let current=null;
+            content.split('\n').forEach(line=>{
+                line=line.trim();
+                if(line.startsWith('## ')){
+                    const title=line.slice(3).trim();
+                    const id=Date.now()+Math.random();
+                    current={id,title,content:"",note:""};
+                    novelData.chapters.push(current);
+                }else if(current && line && !line.startsWith('#') && !line.startsWith('---')){
+                    current.content+=(line+'\n');
+                }
+            });
+            novelData.chapters.forEach(ch=>{
+                if(ch.content){
+                    const ops=ch.content.split('\n').filter(p=>p.trim()).map(p=>({insert:p+'\n'}));
+                    ch.content=JSON.stringify({ops});
+                }
+            });
+            saveAll();renderChapters();
+            if(novelData.chapters.length>0) switchChapter(novelData.chapters[0].id);
+            alert('✅ 导入成功！');
+        };
+        reader.readAsText(file);
+    }
+
+    // 自动保存
+    setInterval(saveAll,8000);
+</script>
+</body>
+</html>
