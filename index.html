@@ -612,8 +612,7 @@ async function loadContentFromGitHub() {
     const decodedContent = decodeURIComponent(escape(atob(data.content))); // 解码内容
 
     // 关键：通过 Quill 全局对象获取编辑器实例（不用找初始化代码）
-    const quillInstances = Quill.listModules()["quill"] || [];
-    const quill = quillInstances.length > 0 ? quillInstances[0] : null;
+    const quill = document.querySelector('#editor') ? Quill.find(document.querySelector('#editor')) : null;
 
     if (quill) {
       quill.root.innerHTML = decodedContent; // 把云端内容显示到编辑器
@@ -1300,4 +1299,5 @@ setInterval(()=>{
 </body>
 
 </html>
+
 
