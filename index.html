@@ -626,8 +626,7 @@ async function loadContentFromGitHub() {
 async function saveContentToGitHub() {
   try {
     // 获取编辑器实例和内容
-    const quillInstances = Quill.listModules()["quill"] || [];
-    const quill = quillInstances.length > 0 ? quillInstances[0] : null;
+    const quill = document.querySelector('#editor') ? Quill.find(document.querySelector('#editor')) : null;
     if (!quill) {
       alert("未找到编辑器，保存失败！");
       return;
@@ -1299,5 +1298,6 @@ setInterval(()=>{
 </body>
 
 </html>
+
 
 
